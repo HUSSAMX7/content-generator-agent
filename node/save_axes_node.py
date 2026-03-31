@@ -1,20 +1,21 @@
 import os
+
 from graph_state import GraphState
+from utils import normalized_filename
+
 
 def save_axes_node(state: GraphState) -> GraphState:
     output_dir = "axes"
     os.makedirs(output_dir, exist_ok=True)
 
-    for i, axis in enumerate(state["axes"], 1):
-        filename = f"{axis['title']}.txt"
-
-        filename = filename.replace("/", "_").replace("\\", "_")
+    for axis in state["axes"]:
+        filename = f"{normalized_filename(axis['title'])}.txt"
         filepath = os.path.join(output_dir, filename)
 
         example_num = 1
         if os.path.exists(filepath):
-            with open(filepath, "r", encoding="utf-8") as existing_f:
-                example_num = existing_f.read().count("===== example") + 1
+            with open(filepath, "r", encoding="utf-8") as f:
+                example_num = f.read().count("===== example") + 1
 
         source_file = state.get("file_name", "unknown")
 

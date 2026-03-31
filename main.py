@@ -1,36 +1,63 @@
 import os
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
 from langgraph.types import Command
-from llama_parse import LlamaParse
+from llama_cloud import LlamaCloud
 
 from workflow import create_workflow
 
 load_dotenv()
 
 
-def read_document_to_text(file_path: str) -> str:
+def read_document_to_text(file_path: str, retries: int = 3, delay: int = 5) -> str:
     clean_path = file_path.strip().strip('"').strip("'")
     path = Path(clean_path).expanduser()
     if not path.exists():
         raise FileNotFoundError(f"File not found: {path}")
 
-    try:
-        parser = LlamaParse(
-            api_key=os.getenv("LLAMA_PARSE_API_KEY"),
-            result_type="markdown",
-            language="ar",
-            use_vendor_multimodal_model=True,
-            vendor_multimodal_model_name="openai-gpt4o",
-        )
-        documents = parser.load_data(str(path))
-        text = "\n\n".join(doc.text for doc in documents)
-    except Exception as e:
-        print(f"LlamaParse error: {e}. Falling back to standard parsing...")
-        import docx
-        doc = docx.Document(str(path))
-        text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
+    client = LlamaCloud(api_key=os.getenv("LLAMA_PARSE_API_KEY"))
+
+    text = ""
+    for attempt in range(1, retries + 1):
+        try:
+            file_obj = client.files.create(file=str(path), purpose="parse")
+            result = client.parsing.parse(
+                file_id=file_obj.id,
+                tier="agentic",
+                version="latest",
+                output_options={
+                    "markdown": {
+                        "tables": {
+                            "output_tables_as_markdown": True,
+                        },
+                    },
+                },
+                processing_options={
+                    "ocr_parameters": {
+                        "languages": ["ar"]
+                    }
+                },
+                expand=["markdown"],
+            )
+            text = "\n\n".join(
+                page.markdown for page in result.markdown.pages
+            )
+            if text.strip():
+                break
+            print(f"Attempt {attempt}: empty result, retrying in {delay}s...")
+            time.sleep(delay)
+        except Exception as e:
+            print(f"Attempt {attempt} failed: {e}")
+            if attempt < retries:
+                time.sleep(delay)
+
+    if not text.strip():
+        print("LlamaCloud returned empty. Falling back to python-docx...")
+        import docx as docx_lib
+        doc = docx_lib.Document(str(path))
+        text = "\n".join(p.text for p in doc.paragraphs)
 
     if not text.strip():
         raise ValueError("Document is empty after parsing.")
@@ -89,7 +116,7 @@ def prompt_user_for_headings(headings: list[str]) -> list[str]:
 
 def main():
     load_dotenv()
-    file_path = r"C:\Users\hosam\OneDrive\سطح المكتب\قياس\a.docx"
+    file_path = r"C:\Users\hosam\OneDrive\سطح المكتب\قياس\b.docx"
     if not file_path:
         raise SystemExit("No file path provided.")
 

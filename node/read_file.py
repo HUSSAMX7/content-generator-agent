@@ -5,6 +5,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from graph_state import GraphState
 from llm_config import llm
 from llm_schema import DocumentHeadings
+from utils import clean_title
 
 SYSTEM_PROMPT = """\
 You are an expert at analyzing Arabic government digital-transformation measurement documents.
@@ -24,7 +25,7 @@ Rules:
    - Any section about the document itself rather than the solution content
 3) EXCLUDE all sub-headings (2.1, 2.2, 3.1, 5.3, etc.) — only top-level axes
 4) EXCLUDE sections like المراجعة and الاعتماد — these are document sign-off pages, not content
-5) Use the EXACT heading text as it appears in the document (without # symbols)
+5) Return the heading text WITHOUT leading numbers or # symbols. For example: "2 الحل الابتكاري" → "الحل الابتكاري"
 6) Return ONLY titles, no content
 """
 
@@ -35,4 +36,5 @@ def extract_headings_node(state: GraphState) -> GraphState:
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=state["content"]),
     ])
-    return {"headings": response.headings}
+    headings = [clean_title(h) for h in response.headings]
+    return {"headings": headings}
