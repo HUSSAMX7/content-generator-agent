@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+from pydantic import BaseModel, Field
+from langchain_core.messages import HumanMessage, SystemMessage
+
 from graph_state import GraphState
-from openai import OpenAI
+from llm_config import llm
+
+from llm_schema import DocumentHeadings
+
 
 SYSTEM_PROMPT = """\
 You are an expert at analyzing Arabic government digital-transformation measurement documents.
@@ -22,18 +28,16 @@ Rules:
 3) EXCLUDE all sub-headings (2.1, 2.2, 3.1, 5.3, etc.) — only top-level axes
 4) EXCLUDE sections like المراجعة and الاعتماد — these are document sign-off pages, not content
 5) Use the EXACT heading text as it appears in the document
-6) Return one heading per line, no numbering, no commentary, nothing else
 """
 
 
+
+
+
 def read_file_node(state: GraphState) -> GraphState:
-    client = OpenAI()
-    response = client.responses.create(
-        model="gpt-5.2",
-        input=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": state["content"]},
-        ],
-    )
-    headings = [line.strip() for line in response.output_text.splitlines() if line.strip()]
-    return {"headings": headings}
+    structured_llm = llm.with_structured_output(DocumentHeadings)
+    response = structured_llm.invoke([
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=state["content"]),
+    ])
+    return {"headings": response.headings}

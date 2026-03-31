@@ -6,6 +6,7 @@ from llama_parse import LlamaParse
 
 from workflow import create_workflow
 
+load_dotenv()
 
 def read_document_to_text(file_path: str) -> str:
     clean_path = file_path.strip().strip('"').strip("'")
@@ -34,12 +35,10 @@ def main():
     content = read_document_to_text(file_path)
 
     app = create_workflow()
-    result = app.invoke({"content": content})
-
-    print("\nMain headings:\n")
-    for idx, heading in enumerate(result.get("headings", []), start=1):
-        print(f"{idx}. {heading}")
-
-
+    
+    result = app.invoke({"content": content}, config={"configurable": {"thread_id": "1"}})
+    for heading in result["headings"]:
+        print(heading)
+        
 if __name__ == "__main__":
     main()
