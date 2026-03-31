@@ -6,38 +6,30 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from graph_state import GraphState
 from llm_config import llm
 
-from llm_schema import DocumentHeadings
+from llm_schema import DocumentAxes
 
 
 SYSTEM_PROMPT = """\
-You are an expert at analyzing Arabic government digital-transformation measurement documents.
+You are an expert at analyzing Arabic government digital-transformation documents.
 
-Your task: extract ONLY the primary content axes (المحاور الرئيسية) from the document.
-
-Understanding the document structure:
-- These documents have a table of contents with numbered sections like 1, 2, 3, 4...
-- Each major section (axis) has sub-sections like 2.1, 2.2, 3.1, 3.2, etc.
-- There are also document metadata sections (document info, version history, reviewers, approvals, table of figures, etc.)
+Your task: extract the primary content axes (المحاور الرئيسية) from the document,
+along with the FULL text content of each axis.
 
 Rules:
-1) Return ONLY the major axes that represent actual content chapters (like مقدمة, الحل الابتكاري, المنهجية, etc.)
-2) EXCLUDE all document metadata/control sections such as:
-   - Document info, version dates, reviewers, approvals
-   - Table of contents, list of figures/tables
-   - Any section about the document itself rather than the solution content
-3) EXCLUDE all sub-headings (2.1, 2.2, 3.1, 5.3, etc.) — only top-level axes
-4) EXCLUDE sections like المراجعة and الاعتماد — these are document sign-off pages, not content
+1) Extract only top-level axes (like مقدمة, الحل الابتكاري, المنهجية, etc.)
+2) For each axis, include its COMPLETE text content including all sub-sections
+3) EXCLUDE document metadata (info, versions, reviewers, approvals, table of contents, list of figures)
+4) EXCLUDE المراجعة and الاعتماد sections
 5) Use the EXACT heading text as it appears in the document
 """
 
 
 
 
-
 def read_file_node(state: GraphState) -> GraphState:
-    structured_llm = llm.with_structured_output(DocumentHeadings)
+    structured_llm = llm.with_structured_output(DocumentAxes)
     response = structured_llm.invoke([
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=state["content"]),
     ])
-    return {"headings": response.headings}
+    return {"axes": [axis.model_dump() for axis in response.axes]}
