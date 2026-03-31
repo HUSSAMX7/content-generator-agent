@@ -28,7 +28,6 @@ def read_document_to_text(file_path: str) -> str:
         text = "\n\n".join(doc.text for doc in documents)
     except Exception as e:
         print(f"LlamaParse error: {e}. Falling back to standard parsing...")
-        # Fallback to standard docx parsing if LlamaParse fails
         import docx
         doc = docx.Document(str(path))
         text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
@@ -39,9 +38,9 @@ def read_document_to_text(file_path: str) -> str:
 
 
 def prompt_user_for_headings(headings: list[str]) -> list[str]:
-    """Interactive CLI: let the user confirm, add, or remove headings."""
+    """Let the user confirm, add, or remove headings."""
     print("\n" + "=" * 50)
-    print("Extracted Axes/Headings:")
+    print("Extracted headings:")
     print("=" * 50)
     for i, h in enumerate(headings, 1):
         print(f"  {i}. {h}")
@@ -54,7 +53,7 @@ def prompt_user_for_headings(headings: list[str]) -> list[str]:
         print("  [d N]   = Delete heading by number (e.g., d 3)")
         print("  [q]     = Quit")
 
-        choice = input("\nSelect an option: ").strip().lower()
+        choice = input("\nSelect: ").strip().lower()
 
         if choice == "":
             print(f"\nConfirmed {len(headings)} headings.")
@@ -64,14 +63,14 @@ def prompt_user_for_headings(headings: list[str]) -> list[str]:
             new_heading = input("Enter new heading title: ").strip()
             if new_heading:
                 headings.append(new_heading)
-                print(f"  ✓ Added: {new_heading}")
+                print(f"  + Added: {new_heading}")
 
         elif choice.startswith("d "):
             try:
                 idx = int(choice.split()[1]) - 1
                 if 0 <= idx < len(headings):
                     removed = headings.pop(idx)
-                    print(f"  ✗ Removed: {removed}")
+                    print(f"  - Removed: {removed}")
                 else:
                     print("  ! Invalid number")
             except (ValueError, IndexError):
@@ -83,7 +82,7 @@ def prompt_user_for_headings(headings: list[str]) -> list[str]:
         else:
             print("  ! Unknown option")
 
-        print("\nCurrent List:")
+        print("\nCurrent list:")
         for i, h in enumerate(headings, 1):
             print(f"  {i}. {h}")
 
@@ -91,6 +90,8 @@ def prompt_user_for_headings(headings: list[str]) -> list[str]:
 def main():
     load_dotenv()
     file_path = r"C:\Users\hosam\OneDrive\سطح المكتب\قياس\a.docx"
+    if not file_path:
+        raise SystemExit("No file path provided.")
 
     content = read_document_to_text(file_path)
     file_name = Path(file_path).name
@@ -98,24 +99,27 @@ def main():
     app = create_workflow()
     config = {"configurable": {"thread_id": file_name}}
 
-    # Phase 1: extract headings → graph pauses at human_review interrupt
-    print("\nExtracting headings...")
+    # Phase 1: LLM extracts headings → graph pauses at human_review
+    print("\nExtracting headings (LLM)...")
     app.invoke(
         {"content": content, "file_name": file_name},
         config=config,
     )
 
-    # Read the state to get extracted headings
+    # Read interrupt data
     state = app.get_state(config)
     headings = state.values.get("headings", [])
 
     if not headings:
-        raise SystemExit("No headings were extracted.")
+        raise SystemExit("No headings extracted.")
 
-    # User reviews and edits
+    # User confirms / adds / removes
     confirmed = prompt_user_for_headings(list(headings))
 
-    # Phase 2: resume with confirmed headings → split → save
+    if not confirmed:
+        raise SystemExit("No headings confirmed.")
+
+    # Phase 2: resume → split content (Python) → save files
     print("\nSplitting content and saving files...")
     result = app.invoke(
         Command(resume=confirmed),
@@ -124,7 +128,7 @@ def main():
 
     print("\nSaved successfully!")
     for axis in result.get("axes", []):
-        print(f"  ✓ {axis['title']}")
+        print(f"  -> {axis['title']}")
 
 
 if __name__ == "__main__":
