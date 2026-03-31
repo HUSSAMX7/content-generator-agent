@@ -31,14 +31,17 @@ def read_document_to_text(file_path: str) -> str:
 
 def main():
     load_dotenv()
-    file_path = r"C:\Users\hosam\OneDrive\سطح المكتب\a.docx"
+    file_path = r"C:\Users\hosam\OneDrive\سطح المكتب\قياس\b.docx"
     content = read_document_to_text(file_path)
-
+    file_name = Path(file_path).name
     app = create_workflow()
     
-    result = app.invoke({"content": content}, config={"configurable": {"thread_id": "1"}})
-    for heading in result["headings"]:
-        print(heading)
+    result = app.invoke(
+        {"content": content, "file_name": file_name},
+        config={"configurable": {"thread_id": "1"}},
+    )
+    for axis in result.get("axes", []):
+        print(axis["title"])
         
 if __name__ == "__main__":
     main()
