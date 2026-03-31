@@ -16,7 +16,7 @@ def save_axes_node(state: GraphState) -> GraphState:
             with open(filepath, "r", encoding="utf-8") as existing_f:
                 example_num = existing_f.read().count("===== example") + 1
 
-        source_file = state.get("source_file", "unknown")
+        source_file = state.get("file_name", "unknown")
 
         block = (
             f"===== example {example_num} =====\n"
