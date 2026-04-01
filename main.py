@@ -64,59 +64,9 @@ def read_document_to_text(file_path: str, retries: int = 3, delay: int = 5) -> s
     return text
 
 
-def prompt_user_for_headings(headings: list[str]) -> list[str]:
-    """Let the user confirm, add, or remove headings."""
-    print("\n" + "=" * 50)
-    print("Extracted headings:")
-    print("=" * 50)
-    for i, h in enumerate(headings, 1):
-        print(f"  {i}. {h}")
-    print("=" * 50)
-
-    while True:
-        print("\nOptions:")
-        print("  [Enter] = Confirm list")
-        print("  [a]     = Add a new heading")
-        print("  [d N]   = Delete heading by number (e.g., d 3)")
-        print("  [q]     = Quit")
-
-        choice = input("\nSelect: ").strip().lower()
-
-        if choice == "":
-            print(f"\nConfirmed {len(headings)} headings.")
-            return headings
-
-        elif choice == "a":
-            new_heading = input("Enter new heading title: ").strip()
-            if new_heading:
-                headings.append(new_heading)
-                print(f"  + Added: {new_heading}")
-
-        elif choice.startswith("d "):
-            try:
-                idx = int(choice.split()[1]) - 1
-                if 0 <= idx < len(headings):
-                    removed = headings.pop(idx)
-                    print(f"  - Removed: {removed}")
-                else:
-                    print("  ! Invalid number")
-            except (ValueError, IndexError):
-                print("  ! Invalid format. Use: d 3")
-
-        elif choice == "q":
-            raise SystemExit("Operation cancelled.")
-
-        else:
-            print("  ! Unknown option")
-
-        print("\nCurrent list:")
-        for i, h in enumerate(headings, 1):
-            print(f"  {i}. {h}")
-
-
 def main():
     load_dotenv()
-    file_path = r"C:\Users\hosam\OneDrive\سطح المكتب\قياس\b.docx"
+    file_path = r"C:\Users\hosam\OneDrive\سطح المكتب\قياس\a.docx"
     if not file_path:
         raise SystemExit("No file path provided.")
 
@@ -126,34 +76,55 @@ def main():
     app = create_workflow()
     config = {"configurable": {"thread_id": file_name}}
 
-    # Phase 1: LLM extracts headings → graph pauses at human_review
     print("\nExtracting headings (LLM)...")
-    app.invoke(
+    result = app.invoke(
         {"content": content, "file_name": file_name},
         config=config,
     )
 
-    # Read interrupt data
-    state = app.get_state(config)
-    headings = state.values.get("headings", [])
+    while True:
+        interrupts = result.get("__interrupt__", ())
+        if not interrupts:
+            break
 
-    if not headings:
-        raise SystemExit("No headings extracted.")
+        interrupt_obj = interrupts[0]
+        payload = getattr(interrupt_obj, "value", interrupt_obj)
 
-    # User confirms / adds / removes
-    confirmed = prompt_user_for_headings(list(headings))
+        display = str(payload.get("display", "")).strip()
+        if display:
+            print(f"\nAssistant:\n{display}")
 
-    if not confirmed:
-        raise SystemExit("No headings confirmed.")
+        first_line = input("\nYou: ").strip()
+        if first_line.lower() in {"q", "quit", "exit"}:
+            raise SystemExit("Operation cancelled.")
 
-    # Phase 2: resume → split content (Python) → save files
-    print("\nSplitting content and saving files...")
-    result = app.invoke(
-        Command(resume=confirmed),
-        config=config,
-    )
+        empty_action = str(payload.get("empty_action", "approve")).strip().lower()
+        revision_action = str(payload.get("revision_action", "revise")).strip().lower()
+        response_key = str(payload.get("response_key", "notes")).strip() or "notes"
 
-    print("\nSaved successfully!")
+        if first_line == "" and empty_action:
+            user_reply = {"action": empty_action, response_key: ""}
+            print("\nAssistant: تم استلام الموافقة. سأكمل التنفيذ.")
+        else:
+            note_lines = [first_line] if first_line else []
+            while True:
+                line = input("... ").strip()
+                if not line:
+                    break
+                note_lines.append(line)
+
+            user_reply = {
+                "action": revision_action,
+                response_key: "\n".join(note_lines).strip(),
+            }
+            print("\nAssistant: تم استلام ملاحظاتك. سأحدّث النتيجة.")
+
+        result = app.invoke(
+            Command(resume=user_reply),
+            config=config,
+        )
+
+    print("\nAssistant: تم حفظ الملفات بنجاح.")
     for axis in result.get("axes", []):
         print(f"  -> {axis['title']}")
 

@@ -6,3 +6,5 @@ class GraphState(TypedDict):
     file_name: NotRequired[str]
     headings: NotRequired[list[str]]
     axes: NotRequired[list[dict]]
+    review_action: NotRequired[str]
+    human_review_notes: NotRequired[str]

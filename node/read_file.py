@@ -26,6 +26,7 @@ Rules:
 3) EXCLUDE all sub-headings (2.1, 2.2, 3.1, 5.3, etc.) — only top-level axes
 4) EXCLUDE sections like المراجعة and الاعتماد — these are document sign-off pages, not content
 5) Return the heading text WITHOUT leading numbers or # symbols. For example: "2 الحل الابتكاري" → "الحل الابتكاري"
+
 6) Return ONLY titles, no content
 """
 
