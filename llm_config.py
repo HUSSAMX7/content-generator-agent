@@ -3,4 +3,4 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
-llm = ChatOpenAI(model="gpt-5.2")
+llm = ChatOpenAI(model="gpt-5.4-mini")

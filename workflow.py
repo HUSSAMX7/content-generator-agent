@@ -14,11 +14,11 @@ checkpointer = InMemorySaver()
 def create_workflow():
     workflow = StateGraph(GraphState)
 
-    workflow.add_node("extract_headings", extract_headings_node)
-    workflow.add_node("normalize_headings", normalize_headings_node)
-    workflow.add_node("human_review", human_review_node)
-    workflow.add_node("split_content", split_content_node)
-    workflow.add_node("save_axes", save_axes_node)
+    workflow.add_node("extract_headings", extract_headings_node) # extract headings 
+    workflow.add_node("normalize_headings", normalize_headings_node) # normalize headings if like مقدمه instead of مقدمة 
+    workflow.add_node("human_review", human_review_node) # Pause and send LLM-extracted headings to the caller for review.
+    workflow.add_node("split_content", split_content_node) # split content into axes
+    workflow.add_node("save_axes", save_axes_node) # save axes to files
 
     workflow.add_edge(START, "extract_headings")
     workflow.add_edge("extract_headings", "normalize_headings")
