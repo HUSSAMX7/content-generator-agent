@@ -94,9 +94,16 @@ def main():
         if display:
             print(f"\nAssistant:\n{display}")
 
-        first_line = input("\nYou: ").strip()
-        if first_line.lower() in {"q", "quit", "exit"}:
-            raise SystemExit("Operation cancelled.")
+        interrupt_type = str(payload.get("type", "")).strip()
+        input_mode = str(payload.get("input_mode", "")).strip().lower()
+        while True:
+            first_line = input("\nYou: ").strip()
+            if first_line.lower() in {"q", "quit", "exit"}:
+                raise SystemExit("Operation cancelled.")
+            if interrupt_type == "save_target_folder" and not first_line:
+                print("\nAssistant: لازم تكتب اسم المجلد قبل أكمل.")
+                continue
+            break
 
         empty_action = str(payload.get("empty_action", "approve")).strip().lower()
         revision_action = str(payload.get("revision_action", "revise")).strip().lower()
@@ -107,11 +114,12 @@ def main():
             print("\nAssistant: تم استلام الموافقة. سأكمل التنفيذ.")
         else:
             note_lines = [first_line] if first_line else []
-            while True:
-                line = input("... ").strip()
-                if not line:
-                    break
-                note_lines.append(line)
+            if input_mode not in {"singleline", "single_line"}:
+                while True:
+                    line = input("... ").strip()
+                    if not line:
+                        break
+                    note_lines.append(line)
 
             user_reply = {
                 "action": revision_action,

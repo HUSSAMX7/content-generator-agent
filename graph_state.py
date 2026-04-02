@@ -8,3 +8,5 @@ class GraphState(TypedDict):
     axes: NotRequired[list[dict]]
     review_action: NotRequired[str]
     human_review_notes: NotRequired[str]
+    target_folder: NotRequired[str]
+    

@@ -5,7 +5,7 @@ from utils import normalized_filename
 
 
 def save_axes_node(state: GraphState) -> GraphState:
-    output_dir = "axes"
+    output_dir = state["target_folder"]
     os.makedirs(output_dir, exist_ok=True)
 
     for axis in state["axes"]:
